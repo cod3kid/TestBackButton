@@ -1,4 +1,6 @@
-# Resolve react_native_pods.rb with node to allow for hoisting
+plugin 'cocoapods-user-defined-build-types'
+enable_user_defined_build_types!
+
 require Pod::Executable.execute_command('node', ['-p',
   'require.resolve(
     "react-native/scripts/react_native_pods.rb",
@@ -8,28 +10,42 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
+# Make Firebase static, without forcing use_frameworks!
+$RNFirebaseAsStaticFramework = true
 
 target 'TestBackButton' do
   config = use_native_modules!
 
+  # IMPORTANT: DO NOT USE use_frameworks! anywhere
+
+  # KEEP Firebase static-framework
+  pod 'FirebaseCore',           :build_type => :static_framework
+  pod 'FirebaseCoreInternal',   :build_type => :static_framework
+  pod 'FirebaseAuth',           :build_type => :static_framework
+  pod 'FirebaseFirestore',      :build_type => :static_framework
+  pod 'FirebaseFirestoreInternal', :build_type => :static_framework
+  pod 'FirebaseFunctions',      :build_type => :static_framework
+  pod 'FirebaseStorage',        :build_type => :static_framework
+  pod 'FirebaseMessagingInterop', :build_type => :static_framework, :modular_headers => true
+  pod 'GoogleUtilities',        :build_type => :static_framework
+  
+  # Facebook SDK
+  pod 'FBSDKCoreKit',           :build_type => :static_framework
+  pod 'FBSDKLoginKit',          :build_type => :static_framework
+  
+  # SHA256
+  pod 'RNSha256', :path => '../node_modules/react-native-sha256'
+
   use_react_native!(
     :path => config[:reactNativePath],
-    # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
-      # :ccache_enabled => true
     )
   end
 end

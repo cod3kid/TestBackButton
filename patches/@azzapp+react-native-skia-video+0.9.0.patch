@@ -1,0 +1,240 @@
+diff --git a/node_modules/@azzapp/react-native-skia-video/ios/ReactNativeSkiaVideo.mm b/node_modules/@azzapp/react-native-skia-video/ios/ReactNativeSkiaVideo.mm
+index 3c49248..dcc0b77 100644
+--- a/node_modules/@azzapp/react-native-skia-video/ios/ReactNativeSkiaVideo.mm
++++ b/node_modules/@azzapp/react-native-skia-video/ios/ReactNativeSkiaVideo.mm
+@@ -13,28 +13,17 @@
+ #import "VideoEncoderHostObject.h"
+ #import "VideoPlayerHostObject.h"
+ 
+-@implementation ReactNativeSkiaVideo
+-RCT_EXPORT_MODULE()
+-RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install) {
+-  RCTBridge* bridge = [RCTBridge currentBridge];
+-  RCTCxxBridge* cxxBridge = (RCTCxxBridge*)bridge;
+-  if (cxxBridge == nil) {
+-    return @false;
+-  }
+-
++// Shared C++ function that installs JSI bindings on global.RNSkiaVideo
++static void installSkiaVideoBindings(facebook::jsi::Runtime& runtime,
++    std::shared_ptr<facebook::react::CallInvoker> jsCallInvoker) {
+   using namespace facebook;
+   using namespace RNSkiaVideo;
+ 
+-  auto jsiRuntime = (jsi::Runtime*)cxxBridge.runtime;
+-  if (jsiRuntime == nil) {
+-    return @false;
+-  }
+-  auto& runtime = *jsiRuntime;
+   auto RNSVModule = jsi::Object(runtime);
+ 
+   auto createVideoPlayer = jsi::Function::createFromHostFunction(
+       runtime, jsi::PropNameID::forAscii(runtime, "createVideoPlayer"), 2,
+-      [bridge](jsi::Runtime& runtime, const jsi::Value& thisValue,
++      [jsCallInvoker](jsi::Runtime& runtime, const jsi::Value& thisValue,
+                const jsi::Value* arguments, size_t count) -> jsi::Value {
+         if (count < 1 || !arguments[0].isString()) {
+           throw jsi::JSError(runtime,
+@@ -62,21 +51,19 @@ @implementation ReactNativeSkiaVideo
+         NSURL* url = [NSURL URLWithString:urlStr];
+ 
+         auto instance = std::make_shared<VideoPlayerHostObject>(
+-            runtime, bridge.jsCallInvoker, url, resolution);
++            runtime, jsCallInvoker, url, resolution);
+         return jsi::Object::createFromHostObject(runtime, instance);
+       });
+   RNSVModule.setProperty(runtime, "createVideoPlayer",
+                          std::move(createVideoPlayer));
+ 
+-  runtime.global().setProperty(runtime, "RNSkiaVideo", RNSVModule);
+-
+   auto createVideoCompositionFramesExtractor =
+       jsi::Function::createFromHostFunction(
+           runtime,
+           jsi::PropNameID::forAscii(runtime,
+                                     "createVideoCompositionFramesExtractor"),
+           1,
+-          [bridge](jsi::Runtime& runtime, const jsi::Value& thisValue,
++          [jsCallInvoker](jsi::Runtime& runtime, const jsi::Value& thisValue,
+                    const jsi::Value* arguments, size_t count) -> jsi::Value {
+             if (count != 1 || !arguments[0].isObject()) {
+               throw jsi::JSError(runtime,
+@@ -89,7 +76,7 @@ @implementation ReactNativeSkiaVideo
+             auto videoComposition = VideoComposition::fromJS(runtime, jsObject);
+             auto instance =
+                 std::make_shared<VideoCompositionFramesExtractorHostObject>(
+-                    runtime, bridge.jsCallInvoker, videoComposition);
++                    runtime, jsCallInvoker, videoComposition);
+             return jsi::Object::createFromHostObject(runtime, instance);
+           });
+   RNSVModule.setProperty(runtime, "createVideoCompositionFramesExtractor",
+@@ -101,7 +88,7 @@ @implementation ReactNativeSkiaVideo
+           jsi::PropNameID::forAscii(
+               runtime, "createVideoCompositionFramesExtractorSync"),
+           1,
+-          [bridge](jsi::Runtime& runtime, const jsi::Value& thisValue,
++          [](jsi::Runtime& runtime, const jsi::Value& thisValue,
+                    const jsi::Value* arguments, size_t count) -> jsi::Value {
+             if (count != 1 || !arguments[0].isObject()) {
+               throw jsi::JSError(runtime,
+@@ -123,7 +110,7 @@ @implementation ReactNativeSkiaVideo
+ 
+   auto createVideoEncoder = jsi::Function::createFromHostFunction(
+       runtime, jsi::PropNameID::forAscii(runtime, "createVideoEncoder"), 1,
+-      [bridge](jsi::Runtime& runtime, const jsi::Value& thisValue,
++      [](jsi::Runtime& runtime, const jsi::Value& thisValue,
+                const jsi::Value* arguments, size_t count) -> jsi::Value {
+         if (count != 1 || !arguments[0].isObject()) {
+           throw jsi::JSError(runtime, "ReactNativeSkiaVideo.createVideoEncoder("
+@@ -148,7 +135,7 @@ @implementation ReactNativeSkiaVideo
+ 
+   auto usleepJS = jsi::Function::createFromHostFunction(
+       runtime, jsi::PropNameID::forAscii(runtime, "usleep"), 1,
+-      [bridge](jsi::Runtime& runtime, const jsi::Value& thisValue,
++      [](jsi::Runtime& runtime, const jsi::Value& thisValue,
+                const jsi::Value* arguments, size_t count) -> jsi::Value {
+         auto time = arguments[0].asNumber();
+         usleep(time);
+@@ -157,14 +144,64 @@ @implementation ReactNativeSkiaVideo
+   RNSVModule.setProperty(runtime, "usleep", std::move(usleepJS));
+ 
+   runtime.global().setProperty(runtime, "RNSkiaVideo", RNSVModule);
++}
++
++#ifdef RCT_NEW_ARCH_ENABLED
++// Custom TurboModule subclass that intercepts install() to access the JSI runtime
++// directly from C++, bypassing the ObjC bridge limitation in bridgeless mode.
++namespace {
++class ReactNativeSkiaVideoTurboModule
++    : public facebook::react::NativeReactNativeSkiaVideoSpecJSI {
++public:
++  ReactNativeSkiaVideoTurboModule(
++      const facebook::react::ObjCTurboModule::InitParams& params)
++      : NativeReactNativeSkiaVideoSpecJSI(params) {}
++
++  facebook::jsi::Value get(facebook::jsi::Runtime& runtime,
++                           const facebook::jsi::PropNameID& propName) override {
++    auto name = propName.utf8(runtime);
++    if (name == "install") {
++      auto jsCallInvoker = jsInvoker_;
++      return facebook::jsi::Function::createFromHostFunction(
++          runtime, propName, 0,
++          [jsCallInvoker](facebook::jsi::Runtime& rt,
++                          const facebook::jsi::Value&,
++                          const facebook::jsi::Value*, size_t)
++              -> facebook::jsi::Value {
++            installSkiaVideoBindings(rt, jsCallInvoker);
++            return facebook::jsi::Value(true);
++          });
++    }
++    return NativeReactNativeSkiaVideoSpecJSI::get(runtime, propName);
++  }
++};
++} // namespace
++#endif
++
++@implementation ReactNativeSkiaVideo
++RCT_EXPORT_MODULE()
++RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install) {
++  RCTBridge* bridge = [RCTBridge currentBridge];
++  RCTCxxBridge* cxxBridge = (RCTCxxBridge*)bridge;
++  if (cxxBridge == nil) {
++    return @false;
++  }
++
++  using namespace facebook;
++
++  auto jsiRuntime = (jsi::Runtime*)cxxBridge.runtime;
++  if (jsiRuntime == nil) {
++    return @false;
++  }
++
++  installSkiaVideoBindings(*jsiRuntime, bridge.jsCallInvoker);
+   return @true;
+ }
+ // Don't compile this code when we build for the old architecture.
+ #ifdef RCT_NEW_ARCH_ENABLED
+ - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
+     (const facebook::react::ObjCTurboModule::InitParams&)params {
+-  return std::make_shared<facebook::react::NativeReactNativeSkiaVideoSpecJSI>(
+-      params);
++  return std::make_shared<ReactNativeSkiaVideoTurboModule>(params);
+ }
+ #endif
+ 
+diff --git a/node_modules/@azzapp/react-native-skia-video/lib/commonjs/exportVideoComposition.js b/node_modules/@azzapp/react-native-skia-video/lib/commonjs/exportVideoComposition.js
+index ddffca1..9deb225 100644
+--- a/node_modules/@azzapp/react-native-skia-video/lib/commonjs/exportVideoComposition.js
++++ b/node_modules/@azzapp/react-native-skia-video/lib/commonjs/exportVideoComposition.js
+@@ -80,7 +80,8 @@ const exportVideoComposition = async ({
+         }
+       }
+     } catch (e) {
+-      (0, _reactNativeReanimated.runOnJS)(reject)(e);
++      const msg = '' + (e?.message || e?.localizedDescription || e);
++      (0, _reactNativeReanimated.runOnJS)(reject)(msg);
+       return;
+     } finally {
+       frameExtractor?.dispose();
+@@ -89,7 +90,8 @@ const exportVideoComposition = async ({
+     try {
+       encoder.finishWriting();
+     } catch (e) {
+-      (0, _reactNativeReanimated.runOnJS)(reject)(e);
++      const msg = '' + (e?.message || e?.localizedDescription || e);
++      (0, _reactNativeReanimated.runOnJS)(reject)(msg);
+       return;
+     } finally {
+       encoder?.dispose();
+diff --git a/node_modules/@azzapp/react-native-skia-video/lib/module/exportVideoComposition.js b/node_modules/@azzapp/react-native-skia-video/lib/module/exportVideoComposition.js
+index 0ed8ba0..0fc4b70 100644
+--- a/node_modules/@azzapp/react-native-skia-video/lib/module/exportVideoComposition.js
++++ b/node_modules/@azzapp/react-native-skia-video/lib/module/exportVideoComposition.js
+@@ -75,7 +75,8 @@ export const exportVideoComposition = async ({
+         }
+       }
+     } catch (e) {
+-      runOnJS(reject)(e);
++      const msg = '' + (e?.message || e?.localizedDescription || e);
++      runOnJS(reject)(msg);
+       return;
+     } finally {
+       frameExtractor?.dispose();
+@@ -84,7 +85,8 @@ export const exportVideoComposition = async ({
+     try {
+       encoder.finishWriting();
+     } catch (e) {
+-      runOnJS(reject)(e);
++      const msg = '' + (e?.message || e?.localizedDescription || e);
++      runOnJS(reject)(msg);
+       return;
+     } finally {
+       encoder?.dispose();
+diff --git a/node_modules/@azzapp/react-native-skia-video/src/exportVideoComposition.ts b/node_modules/@azzapp/react-native-skia-video/src/exportVideoComposition.ts
+index d258718..a1d1289 100644
+--- a/node_modules/@azzapp/react-native-skia-video/src/exportVideoComposition.ts
++++ b/node_modules/@azzapp/react-native-skia-video/src/exportVideoComposition.ts
+@@ -115,8 +115,9 @@ export const exportVideoComposition = async <T = undefined>({
+             });
+           }
+         }
+-      } catch (e) {
+-        runOnJS(reject)(e);
++      } catch (e: any) {
++        const msg = '' + (e?.message || e?.localizedDescription || e);
++        runOnJS(reject)(msg);
+         return;
+       } finally {
+         frameExtractor?.dispose();
+@@ -125,8 +126,9 @@ export const exportVideoComposition = async <T = undefined>({
+ 
+       try {
+         encoder!.finishWriting();
+-      } catch (e) {
+-        runOnJS(reject)(e);
++      } catch (e: any) {
++        const msg = '' + (e?.message || e?.localizedDescription || e);
++        runOnJS(reject)(msg);
+         return;
+       } finally {
+         encoder?.dispose();
