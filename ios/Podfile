@@ -12,8 +12,6 @@ prepare_react_native_project!
 
 target 'TestBackButton' do
   config = use_native_modules!
-
-  pod 'GoogleUtilities',        :build_type => :static_framework
   
   # Facebook SDK
   pod 'FBSDKCoreKit',           :build_type => :static_framework
