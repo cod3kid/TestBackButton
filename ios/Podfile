@@ -17,9 +17,6 @@ target 'TestBackButton' do
   pod 'FBSDKCoreKit',           :build_type => :static_framework
   pod 'FBSDKLoginKit',          :build_type => :static_framework
   
-  # SHA256
-  pod 'RNSha256', :path => '../node_modules/react-native-sha256'
-
   use_react_native!(
     :path => config[:reactNativePath],
     :app_path => "#{Pod::Config.instance.installation_root}/.."
