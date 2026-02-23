@@ -10,23 +10,9 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
-# Make Firebase static, without forcing use_frameworks!
-$RNFirebaseAsStaticFramework = true
-
 target 'TestBackButton' do
   config = use_native_modules!
 
-  # IMPORTANT: DO NOT USE use_frameworks! anywhere
-
-  # KEEP Firebase static-framework
-  pod 'FirebaseCore',           :build_type => :static_framework
-  pod 'FirebaseCoreInternal',   :build_type => :static_framework
-  pod 'FirebaseAuth',           :build_type => :static_framework
-  pod 'FirebaseFirestore',      :build_type => :static_framework
-  pod 'FirebaseFirestoreInternal', :build_type => :static_framework
-  pod 'FirebaseFunctions',      :build_type => :static_framework
-  pod 'FirebaseStorage',        :build_type => :static_framework
-  pod 'FirebaseMessagingInterop', :build_type => :static_framework, :modular_headers => true
   pod 'GoogleUtilities',        :build_type => :static_framework
   
   # Facebook SDK
