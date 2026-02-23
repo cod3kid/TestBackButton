@@ -13,10 +13,6 @@ prepare_react_native_project!
 target 'TestBackButton' do
   config = use_native_modules!
   
-  # Facebook SDK
-  pod 'FBSDKCoreKit',           :build_type => :static_framework
-  pod 'FBSDKLoginKit',          :build_type => :static_framework
-  
   use_react_native!(
     :path => config[:reactNativePath],
     :app_path => "#{Pod::Config.instance.installation_root}/.."
