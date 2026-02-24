@@ -140,6 +140,58 @@ const TabNavigator = () => {
 
 // ##########################
 
+const FAQ_DATA = [
+  {
+    id: '1',
+    question: 'How do I reset my password?',
+    answer:
+      'Go to Settings > Account > Reset Password. You will receive an email with a link to create a new password.',
+  },
+  {
+    id: '2',
+    question: 'How do I update my profile?',
+    answer:
+      'Navigate to Settings > Profile. From there you can update your name, photo, and other personal details.',
+  },
+  {
+    id: '3',
+    question: 'How do I contact support?',
+    answer:
+      'You can reach our support team by emailing support@example.com or through the in-app chat on the Settings page.',
+  },
+  {
+    id: '4',
+    question: 'Is my data secure?',
+    answer:
+      'Yes. All data is encrypted in transit and at rest. We follow industry-standard security practices to protect your information.',
+  },
+  {
+    id: '5',
+    question: 'How do I delete my account?',
+    answer:
+      'Go to Settings > Account > Delete Account. Please note this action is permanent and cannot be undone.',
+  },
+  {
+    id: '6',
+    question: 'Can I use the app offline?',
+    answer:
+      'Some features are available offline. Your data will sync automatically when you reconnect to the internet.',
+  },
+  {
+    id: '7',
+    question: 'How do I cancel my subscription?',
+    answer:
+      'You can cancel your subscription through your device\'s app store settings or by going to Settings > Subscription > Cancel.',
+  },
+];
+
+const FAQItem = ({ item }) => (
+  <View style={faqStyles.item}>
+    <Text style={faqStyles.question}>{item.question}</Text>
+    <Text style={faqStyles.answer}>{item.answer}</Text>
+  </View>
+);
+
 const FAQScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
 
@@ -151,12 +203,40 @@ const FAQScreen = ({ navigation }) => {
           style={styles.backButton}>
           <Text>{'<- back'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>FAQ</Text>
+        <Text style={styles.headerTitle}>FAQss</Text>
         <View style={styles.backButton} />
       </View>
+      <FlatList
+        data={FAQ_DATA}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => <FAQItem item={item} />}
+        contentContainerStyle={faqStyles.list}
+      />
     </View>
   );
 };
+
+const faqStyles = StyleSheet.create({
+  list: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+  },
+  item: {
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ccc',
+  },
+  question: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  answer: {
+    fontSize: 14,
+    color: '#555',
+    lineHeight: 20,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {

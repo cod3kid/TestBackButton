@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native/ReactCommon/react/renderer/uimanager/UIManagerBinding.cpp b/node_modules/react-native/ReactCommon/react/renderer/uimanager/UIManagerBinding.cpp
+index c5baaf7..f2c8801 100644
+--- a/node_modules/react-native/ReactCommon/react/renderer/uimanager/UIManagerBinding.cpp
++++ b/node_modules/react-native/ReactCommon/react/renderer/uimanager/UIManagerBinding.cpp
+@@ -131,9 +131,7 @@ void UIManagerBinding::dispatchEventToJS(
+                                                : jsi::Value::null();
+ 
+   if (instanceHandle.isNull()) {
+-    // Do not log all missing instanceHandles to avoid log spam
+-    LOG_EVERY_N(INFO, 10) << "instanceHandle is null, event of type " << type
+-                          << " will be dropped";
++    return;
+   }
+ 
+   currentEventPriority_ = priority;
